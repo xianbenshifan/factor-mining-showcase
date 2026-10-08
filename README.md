@@ -5,6 +5,28 @@
 - 线上：<https://factor-mining-showcase.pages.dev>
 - 页面只有一个视频播放器，首页即录像。
 
+## ⚠️ 重要：不要使用 `_headers` 文件
+
+本仓库**刻意不含** `_headers`。原因是它会让视频进度条拖不动。
+
+**实测 A/B 对照**（同一站点、仅差 `_headers`，用浏览器媒体栈作判据）：
+
+| 部署 | `_headers` | 第 1 秒 `video.seekable` | 跳到 98s |
+|---|---|---|---|
+| 含 `_headers` | ✅ 有 | `[0, 0]`（持续 8s 以上） | ❌ 失败，弹回 1.7s |
+| 已移除 | ❌ 无 | `[0, 147.9]` | ✅ 成功 |
+
+**原因**：`_headers` 会让 Cloudflare Pages 的响应失去 HTTP Range 支持。
+浏览器拿不到 `206 Partial Content`，就判定整段视频不可跳转，
+`v.seekable` 退化为 `[0, 0]`，进度条因此完全拖不动。
+
+**判据提示**：不要用原始 HTTP 请求测 Range（很容易误判 —— 实测连 cdnjs 这种必然支持
+分段的站点，用脚本发 Range 也会返回 200）。**用 `video.seekable` 才是权威**：
+正常应为 `[0, duration]`，若为 `[0, 0]` 就说明分段不可用。
+
+**替代方案**：noindex 改用 `robots.txt`（`Disallow: /`）+ HTML 里的
+`<meta name="robots" content="noindex">`。这两者已足够，且不影响媒体分段。
+
 ## 内容
 
 ```
@@ -13,8 +35,10 @@ media/av1.mp4     AV1 · 2560×1238 · 11.87 MiB
 media/h264.mp4    H.264 · 1920×928 · 18.55 MiB（兼容性回退）
 media/poster.jpg  封面（1600 宽，119 KB）
 robots.txt        Disallow: /
-_headers          X-Robots-Tag: noindex
 ```
+
+> ⚠️ **本仓库刻意不含 `_headers`** —— 它会破坏 Cloudflare Pages 的 Range 支持，
+> 导致视频进度条拖不动。详见下方「重要」一节。
 
 页面用 `<source>` 依次声明 AV1 与 H.264，浏览器自动挑选支持的格式：
 现代浏览器播放 AV1（体积更小、保留原分辨率），不支持 AV1 的环境回落到 H.264。
