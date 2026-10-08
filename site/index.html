@@ -219,7 +219,7 @@
 
     <div class="player">
       <div class="player-inner">
-        <video id="v" controls preload="none" playsinline
+        <video id="v" preload="metadata" playsinline
                poster="media/poster.jpg" width="2560" height="1238">
           <!-- 优先 AV1（体积更小、保留原分辨率），不支持时回落到 H.264 -->
           <source src="media/av1.mp4" type="video/mp4" />
@@ -248,22 +248,25 @@
 
       function play() {
         poster.hidden = true;
+        // 播放后才显示原生控制条。
+        // 播放前不显示，是为了避免出现「看得见却拖不动」的进度条：
+        // 封面覆盖在视频之上，若此时控制条可见，用户拖动会被封面接走。
+        v.controls = true;
         v.play().catch(function () {
-          // 若浏览器拒绝自动播放，回退到原生控件让用户手动点
-          v.controls = true;
-          poster.hidden = true;
+          // 播放被拒时保持控制条可见，让用户手动点播放
         });
       }
 
       poster.addEventListener('click', play);
 
-      // 视频播完回到海报态
+      // 视频播完回到封面态
       v.addEventListener('ended', function () {
         poster.hidden = false;
+        v.controls = false;
         v.currentTime = 0;
       });
 
-      // 键盘可达：焦点在海报上时回车/空格播放
+      // 键盘可达：焦点在封面上时回车/空格播放
       poster.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); play(); }
       });
