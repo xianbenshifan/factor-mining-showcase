@@ -1,6 +1,6 @@
 # factor-mining-showcase
 
-量化因子挖掘系统的**演示录像页**（纯静态，无后端）。
+量化因子挖掘系统的**演示视频页**（纯静态，无后端）。
 
 - 线上：<https://factor-mining-showcase.pages.dev>
 - 页面只有一个视频播放器，首页即录像。
