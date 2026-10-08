@@ -29,16 +29,23 @@
 
 ## 内容
 
+**站点文件全部在 `site/`，部署时只传该目录。**
+
 ```
-index.html        视频播放页（含海报层，点击后才加载视频）
-media/av1.mp4     AV1 · 2560×1238 · 11.87 MiB
-media/h264.mp4    H.264 · 1920×928 · 18.55 MiB（兼容性回退）
-media/poster.jpg  封面（1600 宽，119 KB）
-robots.txt        Disallow: /
+site/index.html        视频播放页（含海报层，点击后才加载视频）
+site/media/av1.mp4     AV1 · 2560×1238 · 11.87 MiB
+site/media/h264.mp4    H.264 · 1920×928 · 18.55 MiB（兼容性回退）
+site/media/poster.jpg  封面（1600 宽，119 KB）
+site/robots.txt        Disallow: /
 ```
 
+> ⚠️ **不要部署仓库根目录。**
+> 早先直接 `wrangler pages deploy .` 时，`README.md`、`.gitignore`、`deploy.log`
+> 也被一并上传，**在线上可被任意下载**（实测均返回 200）。
+> 站点文件收进 `site/` 后，这些就不再随部署外露。
+>
 > ⚠️ **本仓库刻意不含 `_headers`** —— 它会破坏 Cloudflare Pages 的 Range 支持，
-> 导致视频进度条拖不动。详见下方「重要」一节。
+> 导致视频进度条拖不动。详见上方「重要」一节。
 
 页面用 `<source>` 依次声明 AV1 与 H.264，浏览器自动挑选支持的格式：
 现代浏览器播放 AV1（体积更小、保留原分辨率），不支持 AV1 的环境回落到 H.264。
@@ -58,8 +65,10 @@ robots.txt        Disallow: /
 ## 部署
 
 ```bash
-npx wrangler pages deploy . --project-name factor-mining-showcase --branch main
+npx wrangler pages deploy site --project-name factor-mining-showcase --branch main
 ```
+
+**注意部署的是 `site/`，不是 `.`** —— 传仓库根会把 `README.md` 等文件一起公开。
 
 ## 注意
 
