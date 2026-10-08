@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow, noarchive" />
+<title>视频诊断</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; padding: 18px;
+    background: #0b1020; color: #e8eefc;
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 13px; line-height: 1.7;
+  }
+  h1 { font-size: 17px; margin: 0 0 4px; font-family: system-ui, sans-serif; }
+  .sub { color: #93a2bd; font-size: 12px; margin-bottom: 16px; font-family: system-ui, sans-serif; }
+  video { width: 100%; max-width: 720px; background: #000; border-radius: 8px; display: block; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0; }
+  button {
+    padding: 8px 16px; border: 0; border-radius: 8px; cursor: pointer;
+    background: #3b82f6; color: #fff; font-size: 13px; font-family: inherit;
+  }
+  button.ghost { background: #1e293b; color: #cbd5e1; }
+  table { border-collapse: collapse; width: 100%; max-width: 720px; margin-top: 8px; }
+  td { padding: 5px 10px; border-bottom: 1px solid #1e293b; vertical-align: top; }
+  td.k { color: #93a2bd; white-space: nowrap; width: 168px; }
+  td.v { color: #e8eefc; word-break: break-all; }
+  .ok { color: #4ade80; }
+  .bad { color: #f87171; }
+  .warn { color: #fbbf24; }
+  pre {
+    background: #0f172a; padding: 12px; border-radius: 8px; overflow: auto;
+    max-height: 320px; font-size: 12px; margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+  <h1>视频播放诊断</h1>
+  <p class="sub">
+    这个页面只读播放器状态，请点「开始播放」，等几秒，
+    然后在进度条上拖动一次，再点「复制报告」把结果发我。
+  </p>
+
+  <video id="v" preload="metadata" playsinline controls
+         src="/media/av1.mp4"></video>
+
+  <div class="row">
+    <button id="play">开始播放</button>
+    <button id="seek" class="ghost">跳到 60% 处</button>
+    <button id="copy">复制报告</button>
+  </div>
+
+  <table>
+    <tr><td class="k">浏览器</td><td class="v" id="ua"></td></tr>
+    <tr><td class="k">当前源</td><td class="v" id="src"></td></tr>
+    <tr><td class="k">时长</td><td class="v" id="dur"></td></tr>
+    <tr><td class="k">可跳转区间 seekable</td><td class="v" id="seekable"></td></tr>
+    <tr><td class="k">已缓冲 buffered</td><td class="v" id="buffered"></td></tr>
+    <tr><td class="k">当前时间</td><td class="v" id="cur"></td></tr>
+    <tr><td class="k">readyState</td><td class="v" id="rs"></td></tr>
+    <tr><td class="k">networkState</td><td class="v" id="ns"></td></tr>
+    <tr><td class="k">媒体错误</td><td class="v" id="err"></td></tr>
+    <tr><td class="k">编码支持 AV1 / H264</td><td class="v" id="codec"></td></tr>
+    <tr><td class="k">跳转尝试结果</td><td class="v" id="seekres">（未尝试）</td></tr>
+  </table>
+
+  <pre id="log"></pre>
+
+  <script>
+    var v = document.getElementById('v');
+    var log = document.getElementById('log');
+    var events = [];
+
+    function fmt(ranges) {
+      var out = [];
+      for (var i = 0; i < ranges.length; i++) {
+        out.push('[' + ranges.start(i).toFixed(1) + ', ' + ranges.end(i).toFixed(1) + ']');
+      }
+      return out.length ? out.join(' ') : '（空）';
+    }
+
+    function refresh() {
+      document.getElementById('ua').textContent = navigator.userAgent;
+      document.getElementById('src').textContent = (v.currentSrc || '（未加载）').split('/').pop().split('?')[0];
+      document.getElementById('dur').textContent =
+        Number.isFinite(v.duration) ? v.duration.toFixed(2) + ' s' : String(v.duration);
+      document.getElementById('seekable').textContent = fmt(v.seekable);
+      document.getElementById('buffered').textContent = fmt(v.buffered);
+      document.getElementById('cur').textContent = Number.isFinite(v.currentTime)
+        ? v.currentTime.toFixed(2) + ' s' : String(v.currentTime);
+      document.getElementById('rs').textContent = v.readyState +
+        '（0=无 1=元数据 2=当前帧 3=可播 4=可播到末尾）';
+      document.getElementById('ns').textContent = v.networkState +
+        '（0=空 1=空闲 2=加载中 3=无源）';
+      document.getElementById('err').textContent = v.error
+        ? ('code=' + v.error.code + ' ' + (v.error.message || '')) : '（无）';
+      var probe = document.createElement('video');
+      document.getElementById('codec').textContent =
+        'AV1=' + (probe.canPlayType('video/mp4; codecs="av01.0.05M.08"') || '不支持') +
+        ' / H264=' + (probe.canPlayType('video/mp4; codecs="avc1.640028"') || '不支持');
+    }
+
+    document.getElementById('play').addEventListener('click', function () {
+      v.play().then(function () { events.push('play() 成功'); log.textContent = events.join('\n'); })
+        .catch(function (e) { events.push('play() 失败: ' + e); log.textContent = events.join('\n'); });
+      refresh();
+    });
+
+    document.getElementById('seek').addEventListener('click', function () {
+      var target = Math.round(v.duration * 0.6);
+      var before = v.currentTime;
+      v.currentTime = target;
+      events.push('尝试跳转: ' + before.toFixed(1) + 's -> ' + target + 's');
+      log.textContent = events.join('\n');
+      setTimeout(function () {
+        var back = Math.abs(v.currentTime - target) < 3;
+        document.getElementById('seekres').innerHTML = back
+          ? '<span class="ok">成功，当前 ' + v.currentTime.toFixed(1) + 's</span>'
+          : '<span class="bad">弹回了！目标 ' + target + 's，实际 ' +
+            v.currentTime.toFixed(1) + 's</span>';
+        events.push(back ? '结果: 成功 ' + v.currentTime.toFixed(1) + 's'
+                         : '结果: 弹回 ' + v.currentTime.toFixed(1) + 's');
+        log.textContent = events.join('\n');
+        refresh();
+      }, 2500);
+    });
+
+    document.getElementById('copy').addEventListener('click', function () {
+      var lines = [
+        '--- 视频诊断报告 ---',
+        'UA: ' + navigator.userAgent,
+        '当前源: ' + (v.currentSrc || '(未加载)'),
+        '时长: ' + v.duration,
+        'seekable: ' + fmt(v.seekable),
+        'buffered: ' + fmt(v.buffered),
+        'currentTime: ' + v.currentTime,
+        'readyState: ' + v.readyState,
+        'networkState: ' + v.networkState,
+        '错误: ' + (v.error ? v.error.code + ' ' + v.error.message : '无'),
+        '编码: ' + document.getElementById('codec').textContent,
+        '--- 事件 ---'
+      ].concat(events);
+      var text = lines.join('\n');
+      navigator.clipboard.writeText(text).then(
+        function () { alert('已复制。请把它发给我。\n\n' + text); },
+        function () { alert('复制失败，请手动全选下方文本：\n\n' + text); }
+      );
+    });
+
+    ['loadedmetadata', 'progress', 'seeking', 'seeked', 'stalled', 'suspend',
+     'waiting', 'error', 'canplay', 'playing', 'pause'].forEach(function (name) {
+      v.addEventListener(name, function () {
+        events.push('[' + name + '] t=' + v.currentTime.toFixed(1) +
+                    ' rs=' + v.readyState + ' ns=' + v.networkState +
+                    ' buffered=' + fmt(v.buffered));
+        if (events.length > 60) events.shift();
+        log.textContent = events.join('\n');
+        refresh();
+      });
+    });
+
+    setInterval(refresh, 500);
+    refresh();
+  </script>
+</body>
+</html>

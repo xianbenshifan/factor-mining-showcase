@@ -124,7 +124,7 @@
     vertical-align: middle;
   }
 
-  /* 海报层：点击后才加载视频，省流量 */
+  /* 海报层：视频下载完成前显示，点击后播放 */
   .poster {
     position: absolute;
     inset: 0;
@@ -141,6 +141,9 @@
     font: inherit;
   }
 
+  /* 下载完成前禁用点击，避免误以为没反应 */
+  .poster[data-loading="1"] { cursor: progress; }
+
   .poster img {
     position: absolute;
     inset: 0;
@@ -151,6 +154,27 @@
   }
 
   .poster[hidden] { display: none; }
+
+  /* 下载进度条 */
+  .dl {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.14);
+    overflow: hidden;
+  }
+
+  .dl[hidden] { display: none; }
+
+  .dl i {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, var(--accent-2), var(--accent));
+    transition: width 0.2s ease;
+  }
 
   .play-btn {
     position: relative;
@@ -219,14 +243,8 @@
 
     <div class="player">
       <div class="player-inner">
-        <video id="v" preload="metadata" playsinline
-               poster="media/poster.jpg" width="2560" height="1238">
-          <!-- 优先 AV1（体积更小、保留原分辨率），不支持时回落到 H.264 -->
-          <source src="media/av1.mp4" type="video/mp4" />
-          <source src="media/h264.mp4" type="video/mp4" />
-          你的浏览器不支持 HTML5 视频，请
-          <a href="media/h264.mp4">下载观看</a>。
-        </video>
+        <video id="v" preload="none" playsinline
+               width="2560" height="1238"></video>
 
         <button class="poster" id="poster" type="button" aria-label="播放演示视频">
           <img src="media/poster.jpg" alt="" />
@@ -235,7 +253,8 @@
               <path d="M8 5.5v13l11-6.5z"/>
             </svg>
           </span>
-          <span class="poster-hint">点击播放 · 约 2 分 28 秒</span>
+          <span class="poster-hint" id="hint">正在加载视频…</span>
+          <span class="dl" id="dl"><i id="dlfill"></i></span>
         </button>
       </div>
     </div>
@@ -245,31 +264,99 @@
     (function () {
       var v = document.getElementById('v');
       var poster = document.getElementById('poster');
+      var hint = document.getElementById('hint');
+      var dl = document.getElementById('dl');
+      var dlfill = document.getElementById('dlfill');
+
+      // 选源：支持 AV1 就用它（更小、保留原分辨率），否则回退 H.264
+      var probe = document.createElement('video');
+      var SRC = probe.canPlayType('video/mp4; codecs="av01.0.05M.08"')
+        ? 'media/av1.mp4'
+        : 'media/h264.mp4';
+
+      var ready = false;        // 是否已备好可播放的源
+      var pendingPlay = false;  // 用户在下载途中点了播放
+      var blobUrl = null;
+
+      function setHint(t) { hint.textContent = t; }
 
       function play() {
+        if (!ready) { pendingPlay = true; return; }
         poster.hidden = true;
-        // 播放后才显示原生控制条。
-        // 播放前不显示，是为了避免出现「看得见却拖不动」的进度条：
-        // 封面覆盖在视频之上，若此时控制条可见，用户拖动会被封面接走。
         v.controls = true;
-        v.play().catch(function () {
-          // 播放被拒时保持控制条可见，让用户手动点播放
-        });
+        v.play().catch(function () { /* 被拒时保留控制条，用户可手动点 */ });
       }
 
-      poster.addEventListener('click', play);
+      // 先把整段视频下载到本地（Blob），再播放。
+      //
+      // 为什么不用直链流式播放：本环境的分段传输不可用，
+      // 直链播放时 video.seekable 会是 [0,0]，进度条拖不动（会弹回）。
+      // 整段下载到本地后，媒体完全可用，任意跳转都成立 —— 不依赖服务器支持 Range。
+      function load() {
+        setHint('正在加载视频…');
+        dl.hidden = false;
+        poster.dataset.loading = '1';
 
-      // 视频播完回到封面态
+        fetch(SRC)
+          .then(function (r) {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            var total = Number(r.headers.get('content-length')) || 0;
+            if (!r.body || !total) return r.blob();
+            var reader = r.body.getReader();
+            var chunks = [];
+            var got = 0;
+            return (function pump() {
+              return reader.read().then(function (res) {
+                if (res.done) return new Blob(chunks, { type: 'video/mp4' });
+                chunks.push(res.value);
+                got += res.value.length;
+                var pct = Math.min(100, Math.round((got / total) * 100));
+                dlfill.style.width = pct + '%';
+                setHint('正在加载视频 ' + pct + '%');
+                return pump();
+              });
+            })();
+          })
+          .then(function (blob) {
+            blobUrl = URL.createObjectURL(blob);
+            v.src = blobUrl;
+            v.preload = 'auto';
+            ready = true;
+            dl.hidden = true;
+            delete poster.dataset.loading;
+            setHint('点击播放 · 约 2 分 28 秒');
+            if (pendingPlay) play();
+          })
+          .catch(function () {
+            // 回退：直接用直链。能正常播放，但进度条可能拖不动。
+            v.src = SRC;
+            v.preload = 'metadata';
+            ready = true;
+            dl.hidden = true;
+            delete poster.dataset.loading;
+            setHint('点击播放 · 约 2 分 28 秒');
+            if (pendingPlay) play();
+          });
+      }
+
+      poster.addEventListener('click', function () {
+        // 下载还没好：记下意图，好了自动播
+        play();
+      });
+
+      // 播完回到封面态
       v.addEventListener('ended', function () {
         poster.hidden = false;
         v.controls = false;
         v.currentTime = 0;
       });
 
-      // 键盘可达：焦点在封面上时回车/空格播放
+      // 键盘可达
       poster.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); play(); }
       });
+
+      load();
     })();
   </script>
 </body>
