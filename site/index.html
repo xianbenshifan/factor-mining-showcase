@@ -212,6 +212,62 @@
     font-size: 0.94em;
   }
 
+  /* 横向对比 */
+  .compare { margin-top: 36px; }
+  .compare h2 { margin: 0 0 6px; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+  .compare .lead { margin: 0 0 16px; color: var(--muted); font-size: 13px; }
+  .compare .lead b { color: #cdc4ff; font-weight: 600; }
+
+  .facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+  .fact {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 12px 13px; border-radius: 12px;
+    background: linear-gradient(135deg, rgba(124, 92, 255, 0.12), rgba(59, 130, 246, 0.07));
+    border: 1px solid rgba(124, 92, 255, 0.24);
+  }
+  .fact .ic { font-size: 16px; line-height: 1.3; }
+  .fact b { display: block; font-size: 12.5px; margin-bottom: 3px; }
+  .fact p { margin: 0; color: var(--muted); font-size: 11.5px; line-height: 1.6; }
+
+  .tablewrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: rgba(255, 255, 255, 0.02);
+    box-shadow: 0 20px 50px -30px rgba(0, 0, 0, 0.9);
+  }
+  table.cmp { border-collapse: collapse; width: 100%; min-width: 900px; font-size: 12px; }
+  table.cmp th, table.cmp td {
+    padding: 10px 12px; text-align: left; vertical-align: top; line-height: 1.55;
+    border-bottom: 1px solid var(--border); border-right: 1px solid var(--border);
+  }
+  table.cmp tr:last-child td { border-bottom: none; }
+  table.cmp th:last-child, table.cmp td:last-child { border-right: none; }
+  table.cmp thead th {
+    position: sticky; top: 0; z-index: 2;
+    background: var(--bg-2); color: #dfe6f5; font-weight: 600; white-space: nowrap;
+  }
+  table.cmp th.dim, table.cmp td.dim {
+    position: sticky; left: 0; z-index: 1;
+    background: var(--bg-2); font-weight: 600; white-space: nowrap; color: #cfd8ec;
+  }
+  table.cmp thead th.dim { z-index: 3; }
+  table.cmp .ours {
+    background: linear-gradient(180deg, rgba(124, 92, 255, 0.16), rgba(59, 130, 246, 0.07));
+    box-shadow: inset 1px 0 0 rgba(124, 92, 255, 0.5), inset -1px 0 0 rgba(124, 92, 255, 0.5);
+  }
+  table.cmp thead th.ours { color: #d7ccff; }
+  table.cmp .yes { color: #6ee7b7; font-weight: 600; }
+  table.cmp .warn { color: #fcd34d; }
+  table.cmp .no { color: #fca5a5; font-weight: 600; }
+  table.cmp .dim b { color: #eef2f8; }
+
+  .compare .note { margin: 12px 0 0; color: #7f8aa3; font-size: 11.5px; line-height: 1.7; }
+
+  @media (max-width: 760px) {
+    .facts { grid-template-columns: 1fr; }
+  }
+
   @media (max-width: 640px) {
     .wrap { padding: 26px 14px 22px; }
     video { max-height: 56vh; }
@@ -258,6 +314,55 @@
         </button>
       </div>
     </div>
+
+    <section class="compare">
+      <h2>与主流开源方案的横向对比</h2>
+      <p class="lead">对照 <b>RD-Agent(Q)</b>（微软）、<b>QuantaAlpha</b>（arXiv 2602.07085）、<b>AlphaAgent</b>（KDD 2025）。</p>
+
+      <div class="facts">
+        <div class="fact">
+          <span class="ic">🧠</span>
+          <div><b>唯一接入外部策展知识库</b><p>1290 页结构化知识三槽注入，跨会话复利。</p></div>
+        </div>
+        <div class="fact">
+          <span class="ic">🛡️</span>
+          <div><b>唯一做未来函数硬审计</b><p>前瞻审计不通过即剔除，守住可上线底线。</p></div>
+        </div>
+        <div class="fact">
+          <span class="ic">📊</span>
+          <div><b>数据与产出规模最大</b><p>213 个变量（非仅 OHLCV）× 340 个已评估因子。</p></div>
+        </div>
+      </div>
+
+      <div class="tablewrap">
+        <table class="cmp">
+          <thead>
+            <tr>
+              <th class="dim">维度</th>
+              <th class="ours">本系统 · WikiAlpha</th>
+              <th>RD-Agent(Q) · 微软</th>
+              <th>QuantaAlpha</th>
+              <th>AlphaAgent · KDD 2025</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="dim">定位</td><td class="ours">Wiki 增强的 LLM 因子挖掘（GP + 代码生成双轨）</td><td>数据驱动的通用 R&amp;D 自动化（量化分支）</td><td>LLM 自进化因子挖掘</td><td>抗 Alpha 衰减的自主因子挖掘</td></tr>
+            <tr><td class="dim">知识注入</td><td class="ours"><span class="yes">✅</span> 外部策展知识库（1290 页 / 三层实体）三槽注入，跨会话复利</td><td>代码级经验图（CoSTEER）</td><td><span class="warn">⚠️</span> 外部 RAG 未接线，仅内部经验库</td><td>因子级成功 / 失败经验库</td></tr>
+            <tr><td class="dim">因子生成</td><td class="ours">LLM 直写<b>可执行代码</b> + GP 表达式</td><td>LLM 写代码（factor.py）</td><td>受限表达式 DSL</td><td>算子库 + AST 符号组装</td></tr>
+            <tr><td class="dim">搜索 / 进化</td><td class="ours">GP 进化搜索 + 四层维度轨迹改进</td><td>进化循环 + 因子 / 模型交替优化</td><td>多样化规划 + 轨迹进化</td><td>三 Agent 闭环迭代</td></tr>
+            <tr><td class="dim">未来函数审计</td><td class="ours"><span class="yes">✅</span> 前瞻审计（硬门，不通过即剔除）</td><td><span class="warn">⚠️</span> 仅提示词约束</td><td><span class="no">✕</span> 无</td><td><span class="no">✕</span> 无</td></tr>
+            <tr><td class="dim">质量保障</td><td class="ours">静态契约 + 短窗试算 + 前瞻审计（三道硬门 + 自动改错）</td><td>值校验 + LLM 代码评审</td><td>AST 正则（符号长度 / 复杂度）</td><td>AST 原创性 + 假设对齐 + 复杂度</td></tr>
+            <tr><td class="dim">去重 / 多样性</td><td class="ours">相关性去重</td><td>IC&lt;0.99 去重</td><td>因子库子图查重</td><td>AST 最大公共子树</td></tr>
+            <tr><td class="dim">数据广度</td><td class="ours"><span class="yes">✅</span> 15 张表 / <b>213 个变量</b>（盘口 / 资金流 / 基本面 / 量价）</td><td>Qlib 数据快照</td><td>6 个日频变量</td><td>OHLCV</td></tr>
+            <tr><td class="dim">工程形态</td><td class="ours">Web 控制台 + 运行池 + <b>MCP 知识库服务</b></td><td>CLI + Streamlit / Flask</td><td>CLI + React Web</td><td>研究代码</td></tr>
+            <tr><td class="dim">依赖</td><td class="ours">Polars + FastAPI（不依赖 Qlib）</td><td>Qlib + Docker（仅 Linux）</td><td>Qlib + rdagent 0.8.0</td><td>Qlib</td></tr>
+            <tr><td class="dim">成果</td><td class="ours"><b>340 因子 / 113 族包</b>，全样本 5.5 年，最高 Rank IC 0.0548</td><td>论文基线</td><td>CSI300 IC 0.047</td><td>CSI500 IC 0.021 / AR 11%</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="note">口径说明：本系统 Rank IC 为单因子全样本（2021-01 ~ 2026-08）口径；三个基线为各自市场（CSI300 / CSI500）的模型 / 组合口径，两者不可直接比较，此处仅作能力维度对照。</p>
+    </section>
   </div>
 
   <script>
