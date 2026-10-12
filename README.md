@@ -1,7 +1,6 @@
 # Wiki 增强的 LLM 因子挖掘系统（WikiAlpha）
 
 > 🎬 **在线演示视频**：<https://factor-mining-showcase.pages.dev>
-> 🛠️ **仓库维护手册**：[MAINTAINER_GUIDE.md](./MAINTAINER_GUIDE.md)（页面实现 / 部署 / 排障）
 
 **只需输入一个研究方向，系统自动完成「挖掘 → 评估 → 改进」全流程。**
 
@@ -284,13 +283,3 @@ flowchart LR
 | 生成 | OpenAI 兼容 LLM API（DeepSeek） |
 | 服务 / 前端 | FastAPI + React 18 + TypeScript（Web 控制台） |
 | 配置 / 校验 | pydantic · Fire |
-
----
-
-## 🙈 关于本仓库与保密
-
-- 本仓库是系统的**演示视频页**（纯静态、无后端），首页即录像；
-- **不包含**系统源码、因子实现细节与真实数据；页面对外的只有演示录像；
-- 页面为 `noindex`，不参与搜索引擎收录。
-
-> 页面实现 / 视频处理 / 部署的完整流程见 [MAINTAINER_GUIDE.md](./MAINTAINER_GUIDE.md)。
